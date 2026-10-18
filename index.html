@@ -187,6 +187,57 @@
   .tap-hint { color: var(--muted); font-size: 1rem; }
   .tap-hint .big { display: block; font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
 
+  /* tap animation */
+  .tap-prompt { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tap-hand {
+    position: relative;
+    font-size: 3.4rem;
+    line-height: 1;
+    animation: tapBob 1.3s cubic-bezier(.45,.05,.55,.95) infinite;
+    filter: drop-shadow(0 8px 18px rgba(167,139,250,.55));
+    z-index: 1;
+  }
+  .tap-hand::before, .tap-hand::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 55%;
+    width: 56px; height: 56px;
+    margin: -28px 0 0 -28px;
+    border: 2px solid rgba(167,139,250,.7);
+    border-radius: 50%;
+    animation: tapWave 1.3s ease-out infinite;
+  }
+  .tap-hand::after { animation-delay: .65s; }
+  @keyframes tapBob {
+    0%, 100% { transform: translateY(-10px) rotate(-10deg); }
+    50% { transform: translateY(8px) rotate(0deg) scale(.94); }
+  }
+  @keyframes tapWave {
+    0% { transform: scale(.45); opacity: .9; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+  .tap-ripple {
+    position: absolute;
+    width: 30px; height: 30px;
+    border: 2px solid rgba(255,255,255,.75);
+    border-radius: 50%;
+    pointer-events: none;
+    transform: translate(-50%,-50%) scale(0);
+    animation: rippleOut .55s ease-out forwards;
+    z-index: 5;
+  }
+  @keyframes rippleOut {
+    0% { transform: translate(-50%,-50%) scale(.2); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(7); opacity: 0; }
+  }
+  .pass-card.pressed { transform: scale(.965); }
+  .pass-card.revealing { animation: cardTilt .5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes cardTilt {
+    0% { transform: rotateX(0) scale(1); }
+    35% { transform: rotateX(-10deg) scale(.97); }
+    100% { transform: rotateX(0) scale(1); }
+  }
+
   /* discuss / vote */
   .turn-banner { text-align: center; font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
   .turn-sub { text-align: center; color: var(--muted); font-size: .9rem; margin-bottom: 16px; }
@@ -469,9 +520,37 @@ function renderReveal(){
   const p = state.players[state.revealIdx];
   cardOpen = false;
   const card = $('pass-card');
-  card.innerHTML = `<div class="tap-hint"><span class="big">Pass to ${escapeHtml(p.name)}</span>Tap to see their card</div>`;
+  card.classList.remove('pressed','revealing');
+  card.innerHTML = `<div class="tap-prompt"><span class="tap-hand">👆</span><div class="tap-hint"><span class="big">Pass to ${escapeHtml(p.name)}</span>Tap to see their card</div></div>`;
   $('reveal-next').style.display = 'none';
-  card.onclick = () => { if(!cardOpen) openCard(); else renderReveal(); };
+  card.onclick = e => { if(!cardOpen) tapOpen(e); else tapHide(e); };
+}
+function spawnRipple(ev){
+  const card = $('pass-card');
+  const rect = card.getBoundingClientRect();
+  const r = document.createElement('span');
+  r.className = 'tap-ripple';
+  r.style.left = ((ev.x ?? rect.left + rect.width/2) - rect.left) + 'px';
+  r.style.top = ((ev.y ?? rect.top + rect.height/2) - rect.top) + 'px';
+  card.appendChild(r);
+  r.addEventListener('animationend', () => r.remove());
+}
+function tapOpen(e){
+  const ev = { x: e.clientX ?? null, y: e.clientY ?? null };
+  const card = $('pass-card');
+  card.classList.add('pressed');
+  setTimeout(() => { card.classList.remove('pressed'); openCard(); spawnRipple(ev); }, 140);
+}
+function tapHide(e){
+  const ev = { x: e.clientX ?? null, y: e.clientY ?? null };
+  const card = $('pass-card');
+  card.classList.add('pressed');
+  setTimeout(() => {
+    card.classList.remove('pressed');
+    renderReveal();
+    $('reveal-next').style.display = 'block';
+    spawnRipple(ev);
+  }, 140);
 }
 function openCard(){
   const p = state.players[state.revealIdx];
@@ -486,7 +565,9 @@ function openCard(){
        <div class="topic-badge">Topic: ${escapeHtml(state.activeTopic)}</div>
        <div class="tap-hint" style="margin-top:14px">Keep it secret!</div>
        <div class="tap-hint" style="margin-top:18px;opacity:.7">Tap to hide</div>`;
-  card.onclick = () => { cardOpen = false; renderReveal(); $('reveal-next').style.display = 'block'; };
+  card.onclick = e => { if(cardOpen) tapHide(e); };
+  card.classList.add('revealing');
+  card.onanimationend = e => { if(e.target === card) card.classList.remove('revealing'); };
 }
 $('reveal-next').onclick = () => {
   if(state.revealIdx < state.players.length - 1){
