@@ -32,7 +32,7 @@ function makeCode() {
 function shuffle(a) { for (let i = a.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
 const server = http.createServer((req, res) => {
-  const file = req.url === '/' || req.url.startsWith('/?') ? 'index.html' : req.url.slice(1).split('?')[0];
+  const file = req.url === '/' || req.url.startsWith('/?') ? 'client.html' : req.url.slice(1).split('?')[0];
   const safe = path.normalize(file).replace(/^(\.\.[\/\\])+/, '');
   const fp = path.join(__dirname, safe);
   if (!fp.startsWith(__dirname)) { res.writeHead(403); return res.end(); }
