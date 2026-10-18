@@ -305,4 +305,4 @@ wss.on('connection', ws => {
 });
 
 const PORT = process.env.PORT || 3456;
-server.listen(PORT, () => console.log(`Word Imposter running at http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Imposter running at http://localhost:${PORT}`));

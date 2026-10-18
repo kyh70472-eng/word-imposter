@@ -1,7 +1,7 @@
 {
   "name": "word-imposter",
   "version": "1.0.0",
-  "description": "Word Imposter — online pass-and-play social deduction word game",
+  "description": "Imposter — online pass-and-play social deduction word game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
