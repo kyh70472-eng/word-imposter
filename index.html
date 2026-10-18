@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Imposter — Online Party Game</title>
+<style>
+  :root {
+    --bg1: #0f0c29;
+    --bg2: #24243e;
+    --accent: #a78bfa;
+    --accent2: #f472b6;
+    --good: #34d399;
+    --bad: #f87171;
+    --card: rgba(255,255,255,.07);
+    --card-brd: rgba(255,255,255,.14);
+    --text: #eef2ff;
+    --muted: #9aa3c7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(1200px 800px at 20% -10%, #3b1d5e 0%, transparent 55%),
+                radial-gradient(1000px 700px at 110% 110%, #0b3a5e 0%, transparent 55%),
+                linear-gradient(160deg, var(--bg1), var(--bg2));
+    background-attachment: fixed;
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    min-height: 100%;
+    padding: 24px 14px 60px;
+  }
+  #app { width: 100%; max-width: 520px; }
+
+  .screen { display: none; animation: fadeUp .45s ease both; }
+  .screen.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  h1.logo {
+    font-size: clamp(2.3rem, 9vw, 3.2rem);
+    text-align: center;
+    letter-spacing: -1px;
+    line-height: 1.05;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 6px;
+  }
+  .tagline { text-align: center; color: var(--muted); margin-bottom: 24px; font-size: .95rem; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-brd);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 16px;
+    backdrop-filter: blur(8px);
+  }
+  .card h2 {
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid var(--card-brd);
+    background: rgba(255,255,255,.05);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 9px 15px;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: .18s;
+    font-family: inherit;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip.on {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-color: transparent;
+    color: #17122b;
+    font-weight: 700;
+  }
+  .chip:disabled { opacity: .4; cursor: not-allowed; }
+
+  input[type=text] {
+    width: 100%;
+    background: rgba(0,0,0,.28);
+    border: 1px solid var(--card-brd);
+    border-radius: 12px;
+    padding: 13px 14px;
+    color: var(--text);
+    font-size: 1rem;
+    font-family: inherit;
+    outline: none;
+    margin-bottom: 10px;
+  }
+  input[type=text]:focus { border-color: var(--accent); }
+  input::placeholder { color: #6b73a0; }
+
+  .btn {
+    display: block;
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    padding: 15px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform .12s, box-shadow .2s;
+    margin-bottom: 10px;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #17122b;
+    box-shadow: 0 8px 26px rgba(167,139,250,.35);
+  }
+  .btn-ghost {
+    background: rgba(255,255,255,.06);
+    color: var(--text);
+    border: 1px solid var(--card-brd);
+  }
+  .btn-good { background: linear-gradient(90deg, #34d399, #22d3ee); color: #06281e; }
+  .btn-sm { width: auto; padding: 10px 20px; font-size: .92rem; display: inline-block; margin: 0; }
+  .btn-danger { background: rgba(248,113,113,.15); color: var(--bad); border: 1px solid rgba(248,113,113,.4); }
+
+  .hint { font-size: .85rem; color: var(--muted); text-align: center; margin-top: 10px; line-height: 1.5; }
+  .err { color: var(--bad); font-size: .88rem; text-align: center; min-height: 1.2em; margin-top: 6px; }
+  .divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: .8rem; margin: 14px 0; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--card-brd); }
+  .row { display: flex; gap: 10px; }
+  .row .btn { flex: 1; }
+  .progress { text-align: center; color: var(--muted); font-size: .85rem; margin-bottom: 12px; letter-spacing: 1px; }
+
+  /* code banner */
+  .code-banner {
+    text-align: center;
+    background: rgba(0,0,0,.3);
+    border: 1px dashed var(--accent);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 16px;
+    cursor: pointer;
+  }
+  .code-banner .lbl { font-size: .72rem; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  .code-banner .code { font-size: 2.2rem; font-weight: 900; letter-spacing: 8px; color: var(--accent); }
+
+  .plist { display: flex; flex-direction: column; gap: 8px; }
+  .prow {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(0,0,0,.22); border: 1px solid var(--card-brd);
+    border-radius: 12px; padding: 12px 15px; font-weight: 700;
+    animation: fadeUp .3s ease both;
+  }
+  .prow .status { font-size: .78rem; font-weight: 600; color: var(--muted); }
+  .prow .status.ok { color: var(--good); }
+  .prow .host-badge {
+    font-size: .65rem; font-weight: 800; letter-spacing: 1px;
+    background: var(--accent); color: #17122b;
+    border-radius: 6px; padding: 2px 7px; margin-left: 8px;
+  }
+
+  /* reveal card */
+  .pass-card {
+    min-height: 300px;
+    border-radius: 24px;
+    border: 1px solid var(--card-brd);
+    background: linear-gradient(150deg, rgba(167,139,250,.16), rgba(244,114,182,.1));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 22px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    transition: .3s;
+  }
+  .pass-card .secret-word {
+    font-size: clamp(2.4rem, 11vw, 3.6rem);
+    font-weight: 900;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: pop .35s ease both;
+  }
+  .pass-card .secret-word.imposter { background: linear-gradient(90deg, var(--bad), var(--accent2)); -webkit-background-clip: text; background-clip: text; }
+  .topic-badge {
+    margin-top: 12px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid var(--card-brd);
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: .9rem;
+  }
+  .tap-hint { color: var(--muted); font-size: 1rem; }
+  .tap-hint .big { display: block; font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+
+  /* clues */
+  .turn-banner { text-align: center; font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+  .turn-banner .you { color: var(--accent2); }
+  .turn-sub { text-align: center; color: var(--muted); font-size: .9rem; margin-bottom: 16px; }
+  .clue-input {
+    width: 100%;
+    background: rgba(0,0,0,.3);
+    border: 1px solid var(--card-brd);
+    border-radius: 14px;
+    padding: 15px;
+    color: var(--text);
+    font-size: 1.15rem;
+    text-align: center;
+    font-family: inherit;
+    outline: none;
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+  }
+  .clue-input:focus { border-color: var(--accent); }
+  .clue-list { display: flex; flex-direction: column; gap: 8px; }
+  .clue-item {
+    display: flex; justify-content: space-between;
+    background: rgba(0,0,0,.22);
+    border: 1px solid var(--card-brd);
+    border-radius: 12px;
+    padding: 11px 15px;
+    animation: fadeUp .3s ease both;
+  }
+  .clue-item b { color: var(--accent); }
+  .clue-item span { font-size: 1.1rem; font-weight: 600; }
+
+  /* vote */
+  .vote-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .vote-btn {
+    border: 1px solid var(--card-brd);
+    background: rgba(255,255,255,.05);
+    color: var(--text);
+    border-radius: 14px;
+    padding: 16px 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: .15s;
+  }
+  .vote-btn:hover { border-color: var(--accent2); background: rgba(244,114,182,.12); }
+  .vote-btn.picked { background: linear-gradient(90deg, var(--accent2), var(--bad)); border-color: transparent; color: #2b0a1a; }
+  .vote-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .vote-progress { text-align: center; font-weight: 700; color: var(--accent); margin-top: 12px; }
+
+  /* result */
+  .banner {
+    text-align: center;
+    border-radius: 20px;
+    padding: 26px 18px;
+    margin-bottom: 16px;
+    animation: pop .4s ease both;
+  }
+  .banner.win { background: linear-gradient(140deg, rgba(52,211,153,.22), rgba(34,211,238,.14)); border: 1px solid rgba(52,211,153,.5); }
+  .banner.lose { background: linear-gradient(140deg, rgba(248,113,113,.2), rgba(244,114,182,.14)); border: 1px solid rgba(248,113,113,.5); }
+  .banner h2 { font-size: 1.7rem; margin-bottom: 6px; }
+  .banner p { color: var(--muted); }
+  .reveal-list { display: flex; flex-direction: column; gap: 8px; }
+  .reveal-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(0,0,0,.22); border: 1px solid var(--card-brd);
+    border-radius: 12px; padding: 13px 16px;
+  }
+  .reveal-item .who { font-weight: 700; }
+  .reveal-item .word { color: var(--muted); font-size: .95rem; text-align: right; }
+  .reveal-item.imp { border-color: var(--bad); background: rgba(248,113,113,.14); }
+  .reveal-item.imp .word { color: var(--bad); font-weight: 800; }
+  .tag {
+    font-size: .7rem; font-weight: 800; letter-spacing: 1px;
+    background: var(--bad); color: #fff;
+    border-radius: 6px; padding: 3px 8px; margin-left: 8px;
+  }
+
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(80px);
+    background: #1b1636;
+    border: 1px solid var(--accent);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: .9rem;
+    opacity: 0;
+    transition: .3s;
+    z-index: 99;
+    max-width: 90vw;
+    text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .conn-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-right: 6px; }
+  .conn-dot.ok { background: var(--good); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME -->
+  <section class="screen active" id="s-home">
+    <h1 class="logo">Word Imposter</h1>
+    <p class="tagline">Everyone gets the same word… except one impostor. Give one-word clues, find the fake.</p>
+
+    <div class="card">
+      <h2>Your Name</h2>
+      <input type="text" id="home-name" maxlength="14" placeholder="e.g. Alex" autocomplete="off">
+    </div>
+
+    <div class="card">
+      <h2>Create a Room</h2>
+      <div style="margin-bottom:12px">
+        <div class="hint" style="margin:0 0 8px;text-align:left">Topic</div>
+        <div class="chip-row" id="topics"></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div class="hint" style="margin:0 0 8px;text-align:left">Impostor mode</div>
+        <div class="chip-row" id="modes">
+          <button class="chip on" data-mode="topic">Knows topic only</button>
+          <button class="chip" data-mode="decoy">Gets a decoy word</button>
+        </div>
+      </div>
+      <div>
+        <div class="hint" style="margin:0 0 8px;text-align:left">Impostors</div>
+        <div class="chip-row" id="imps">
+          <button class="chip on" data-imp="1">1</button>
+          <button class="chip" data-imp="2">2</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-create" style="margin-top:16px">Create Room</button>
+    </div>
+
+    <div class="divider">or join friends</div>
+
+    <div class="card">
+      <h2>Join a Room</h2>
+      <input type="text" id="join-code" maxlength="4" placeholder="ROOM CODE" style="text-transform:uppercase;letter-spacing:6px;text-align:center;font-size:1.4rem;font-weight:800">
+      <button class="btn btn-ghost" id="btn-join">Join</button>
+    </div>
+    <div class="err" id="home-err"></div>
+  </section>
+
+  <!-- LOBBY -->
+  <section class="screen" id="s-lobby">
+    <div class="code-banner" id="code-banner" title="Copy code">
+      <div class="lbl">Share this code</div>
+      <div class="code" id="room-code">----</div>
+      <div class="lbl" style="margin-top:6px">tap to copy</div>
+    </div>
+    <div class="card">
+      <h2>Players <span id="p-count" style="float:right;color:var(--muted)">0</span></h2>
+      <div class="plist" id="lobby-players"></div>
+      <div class="hint" id="lobby-hint">Waiting for players… min 3 to start.</div>
+    </div>
+    <div class="card" id="host-card">
+      <h2>Host Settings</h2>
+      <div style="margin-bottom:12px">
+        <div class="hint" style="margin:0 0 8px;text-align:left">Topic</div>
+        <div class="chip-row" id="lobby-topics"></div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div class="hint" style="margin:0 0 8px;text-align:left">Mode</div>
+        <div class="chip-row" id="lobby-modes">
+          <button class="chip on" data-mode="topic">Topic only</button>
+          <button class="chip" data-mode="decoy">Decoy word</button>
+        </div>
+      </div>
+      <div>
+        <div class="hint" style="margin:0 0 8px;text-align:left">Impostors</div>
+        <div class="chip-row" id="lobby-imps">
+          <button class="chip on" data-imp="1">1</button>
+          <button class="chip" data-imp="2">2</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-start" style="margin-top:16px">Start Game</button>
+    </div>
+    <button class="btn btn-danger" id="btn-leave">Leave Room</button>
+    <div class="err" id="lobby-err"></div>
+  </section>
+
+  <!-- REVEAL -->
+  <section class="screen" id="s-reveal">
+    <div class="progress" id="reveal-progress">YOUR SECRET CARD</div>
+    <div class="pass-card" id="pass-card"></div>
+    <button class="btn btn-good" id="btn-ready" style="display:none;margin-top:14px">I've seen it — Ready</button>
+    <div class="card" style="margin-top:14px">
+      <h2>Waiting for players</h2>
+      <div class="plist" id="ready-list"></div>
+      <div class="hint" id="ready-hint"></div>
+    </div>
+  </section>
+
+  <!-- CLUES -->
+  <section class="screen" id="s-clues">
+    <div class="card">
+      <div class="turn-banner" id="clue-turn"></div>
+      <div class="turn-sub">Say ONE word that describes your card. No repeats!</div>
+      <div id="clue-mine" style="display:none">
+        <input class="clue-input" id="clue-input" maxlength="18" placeholder="your word…" autocomplete="off">
+        <button class="btn btn-primary" id="clue-add">Give Clue</button>
+        <button class="btn btn-ghost" id="clue-skip">Pass (give no word)</button>
+      </div>
+      <div class="err" id="clue-err"></div>
+    </div>
+    <div class="card">
+      <h2>Clues</h2>
+      <div class="clue-list" id="clue-list"><div class="hint">No clues yet.</div></div>
+    </div>
+  </section>
+
+  <!-- VOTE -->
+  <section class="screen" id="s-vote">
+    <div class="card">
+      <div class="turn-banner" id="vote-title">🗳️ Vote out the impostor</div>
+      <div class="turn-sub" id="vote-sub">Who do you suspect?</div>
+      <div class="vote-grid" id="vote-grid"></div>
+      <div class="vote-progress" id="vote-progress"></div>
+      <div class="err" id="vote-err"></div>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="s-result">
+    <div class="banner" id="result-banner"></div>
+    <div class="card">
+      <h2>All Cards</h2>
+      <div class="reveal-list" id="reveal-list"></div>
+    </div>
+    <div class="row" id="result-actions">
+      <button class="btn btn-primary" id="btn-rematch">Rematch</button>
+      <button class="btn btn-ghost" id="btn-back" style="margin-top:0">Back to Lobby</button>
+    </div>
+    <div class="hint" id="result-hint"></div>
+  </section>
+
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const screens = ['s-home','s-lobby','s-reveal','s-clues','s-vote','s-result'];
+function show(name){ screens.forEach(s => $(s).classList.toggle('active', s === name)); window.scrollTo({top:0,behavior:'smooth'}); }
+let toastTimer;
+function toast(text){ const t = $('toast'); t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 3000); }
+
+const TOPIC_LIST = ['Movies','Food','Animals','Countries','Sports','Space','Jobs','Fantasy','Holidays','Music','Tech','Nature'];
+const EMOJI = { Movies:'🎬', Food:'🍔', Animals:'🐾', Countries:'🌍', Sports:'⚽', Space:'🚀', Jobs:'💼', Fantasy:'🏰', Holidays:'🎄', Music:'🎵', Tech:'💻', Nature:'🏕️' };
+
+let settings = { topic: 'Movies', mode: 'topic', imps: 1 };
+let myId = null;
+let lobbyData = null;
+let myVote = null;
+
+/* ---------- connection ---------- */
+let ws = null;
+function connect(){
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onmessage = e => handle(JSON.parse(e.data));
+  ws.onopen = () => {};
+  ws.onclose = () => {
+    if (screens.some(s => s !== 's-home' && $(s).classList.contains('active'))) {
+      toast('Disconnected from server.');
+      show('s-home');
+    }
+  };
+}
+function send(msg){ if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); else toast('Not connected.'); }
+
+function handle(m){
+  switch(m.type){
+    case 'error':
+      $('home-err').textContent = ($('s-home').classList.contains('active') ? m.text : '');
+      if (!$('s-home').classList.contains('active')) toast(m.text);
+      if ($('s-lobby').classList.contains('active')) $('lobby-err').textContent = m.text;
+      if ($('s-vote').classList.contains('active')) $('vote-err').textContent = m.text;
+      if ($('s-clues').classList.contains('active')) $('clue-err').textContent = m.text;
+      break;
+    case 'lobby':
+      lobbyData = m;
+      myId = m.myId;
+      renderLobby();
+      show('s-lobby');
+      break;
+    case 'deal':
+      renderDeal(m);
+      show('s-reveal');
+      break;
+    case 'ready':
+      renderReadyList(m.players);
+      break;
+    case 'phase':
+      if (m.phase === 'reveal') show('s-reveal');
+      if (m.phase === 'clues') renderClues(m);
+      if (m.phase === 'vote') renderVote(m);
+      break;
+    case 'voteProgress':
+      updateVoteProgress(m);
+      break;
+    case 'voteTie':
+      myVote = null;
+      renderVote({ phase:'vote', candidates: lobbyCandidatesFromTie(m), votedCount: 0, total: m.total, tie:true });
+      toast('Tie! Everyone votes again.');
+      break;
+    case 'result':
+      renderResult(m);
+      show('s-result');
+      break;
+    case 'notice':
+      toast(m.text);
+      break;
+  }
+}
+
+function lobbyCandidatesFromTie(m){ return m.candidates; }
+
+/* ---------- home ---------- */
+function renderTopicChips(container, onPick){
+  container.innerHTML = '';
+  TOPIC_LIST.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (settings.topic === t ? ' on' : '');
+    b.textContent = `${EMOJI[t]||''} ${t}`;
+    b.onclick = () => { settings.topic = t; onPick(); };
+    container.appendChild(b);
+  });
+}
+function syncSettingsUI(){
+  renderTopicChips($('topics'), syncSettingsUI);
+  [...$('modes').children].forEach(c => c.classList.toggle('on', c.dataset.mode === settings.mode));
+  [...($('imps') ? $('imps').children : [])].forEach(c => c.classList.toggle('on', +c.dataset.imp === settings.imps));
+}
+$('modes').onclick = e => { const b = e.target.closest('.chip'); if(!b) return; settings.mode = b.dataset.mode; syncSettingsUI(); };
+$('imps').onclick = e => { const b = e.target.closest('.chip'); if(!b) return; settings.imps = +b.dataset.imp; syncSettingsUI(); };
+
+$('btn-create').onclick = () => {
+  const name = $('home-name').value.trim();
+  if (!name) return void ($('home-err').textContent = 'Enter a name first.');
+  $('home-err').textContent = '';
+  send({ type:'create', name, ...settings });
+};
+$('btn-join').onclick = () => {
+  const name = $('home-name').value.trim();
+  const code = $('join-code').value.trim().toUpperCase();
+  if (!name) return void ($('home-err').textContent = 'Enter a name first.');
+  if (code.length !== 4) return void ($('home-err').textContent = 'Room codes are 4 characters.');
+  $('home-err').textContent = '';
+  send({ type:'join', name, code });
+};
+$('join-code').oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); };
+
+/* ---------- lobby ---------- */
+function renderLobby(){
+  const d = lobbyData;
+  $('room-code').textContent = d.code;
+  $('p-count').textContent = `${d.players.length}/12`;
+  $('lobby-players').innerHTML = d.players.map(p => `
+    <div class="prow">
+      <span>${escapeHtml(p.name)}${p.id === d.hostId ? '<span class="host-badge">HOST</span>' : ''}</span>
+      <span class="status ${p.connected?'ok':''}">${p.connected ? 'online' : 'offline'}</span>
+    </div>`).join('');
+  $('lobby-hint').textContent = d.players.length < 3 ? 'Waiting for players… min 3 to start.' : 'Ready to start!';
+
+  const host = d.hostId === d.myId;
+  $('host-card').style.display = host ? 'block' : 'none';
+  settings = { ...settings, ...d.settings };
+  renderTopicChips($('lobby-topics'), () => send({ type:'settings', ...settings }));
+  [...$('lobby-modes').children].forEach(c => {
+    c.classList.toggle('on', c.dataset.mode === d.settings.mode);
+    c.onclick = () => { settings.mode = c.dataset.mode; send({ type:'settings', ...settings }); };
+  });
+  [...$('lobby-imps').children].forEach(c => {
+    c.classList.toggle('on', +c.dataset.imp === d.settings.imps);
+    c.onclick = () => { settings.imps = +c.dataset.imp; send({ type:'settings', ...settings }); };
+  });
+  $('btn-start').disabled = d.players.length < 3;
+  $('lobby-err').textContent = '';
+}
+$('code-banner').onclick = () => {
+  const code = $('room-code').textContent;
+  navigator.clipboard?.writeText(code).then(() => toast('Code copied!'), () => toast('Code: ' + code));
+};
+$('btn-start').onclick = () => send({ type:'start' });
+$('btn-leave').onclick = () => location.reload();
+
+/* ---------- reveal ---------- */
+let cardOpen = false;
+function renderDeal(m){
+  cardOpen = false;
+  $('reveal-progress').textContent = 'YOUR SECRET CARD — tap to reveal';
+  const card = $('pass-card');
+  card.innerHTML = `<div class="tap-hint"><span class="big">👁️ Tap to see your card</span>Don't let anyone else peek!</div>`;
+  card.onclick = () => {
+    if (!cardOpen) {
+      cardOpen = true;
+      card.innerHTML = m.isImposter
+        ? `<div class="secret-word imposter">IMPOSTOR</div>
+           ${m.mode === 'topic' ? `<div class="topic-badge">Topic: ${EMOJI[m.topic]||''} ${m.topic}</div>` : `<div class="topic-badge">Your word: ${escapeHtml(m.word)}</div>`}
+           <div class="tap-hint" style="margin-top:14px">Blend in. Don't get caught.</div>`
+        : `<div class="secret-word">${escapeHtml(m.word)}</div>
+           <div class="topic-badge">Topic: ${EMOJI[m.topic]||''} ${m.topic}</div>
+           <div class="tap-hint" style="margin-top:14px">Keep it secret!</div>`;
+      $('btn-ready').style.display = 'block';
+    } else {
+      cardOpen = false;
+      card.innerHTML = `<div class="tap-hint"><span class="big"> hidden</span>Tap to view again</div>`;
+      $('btn-ready').style.display = 'none';
+    }
+  };
+  $('btn-ready').style.display = 'none';
+  $('btn-ready').onclick = () => send({ type:'ready' });
+  renderReadyList(lobbyData ? lobbyData.players : []);
+}
+function renderReadyList(players){
+  if (!players) return;
+  const box = $('ready-list');
+  box.innerHTML = players.map(p => `
+    <div class="prow">
+      <span>${escapeHtml(p.name)}</span>
+      <span class="status ${p.ready?'ok':''}">${p.ready ? '✓ ready' : '… not ready'}</span>
+    </div>`).join('');
+  const n = players.filter(p => p.ready).length;
+  $('ready-hint').textContent = `${n}/${players.length} ready — everyone must confirm.`;
+}
+
+/* ---------- clues ---------- */
+function renderClues(m){
+  show('s-clues');
+  const isMyTurn = m.turnId === myId;
+  const turnName = m.turnName || ((lobbyData && lobbyData.players || []).find(p => p.id === m.turnId) || {}).name;
+  $('clue-turn').innerHTML = m.turnId
+    ? (isMyTurn ? '🗣️ <span class="you">Your turn!</span>' : `🗣️ Waiting for <span class="you">${escapeHtml(turnName || '…')}</span>…`)
+    : '🗣️ Discussion time!';
+  $('clue-mine').style.display = isMyTurn ? 'block' : 'none';
+  $('clue-err').textContent = '';
+  if (isMyTurn) { $('clue-input').value = ''; setTimeout(()=>$('clue-input').focus(), 100); }
+  paintClues(m.clues);
+}
+function paintClues(clues){
+  const box = $('clue-list');
+  if (!clues || !clues.length) { box.innerHTML = '<div class="hint">No clues yet.</div>'; return; }
+  box.innerHTML = clues.map((c,i) => `<div class="clue-item"><b>${i+1}. ${escapeHtml(c.name)}</b><span>${escapeHtml(c.word)}</span></div>`).join('');
+}
+$('clue-add').onclick = () => {
+  const v = $('clue-input').value.trim();
+  if (!v) return void ($('clue-err').textContent = 'Type a word first.');
+  send({ type:'clue', word: v });
+};
+$('clue-skip').onclick = () => send({ type:'clue', word: '' });
+$('clue-input').onkeydown = e => { if (e.key === 'Enter') $('clue-add').click(); };
+
+/* ---------- vote ---------- */
+function renderVote(m){
+  show('s-vote');
+  myVote = null;
+  const players = (lobbyData && lobbyData.players) || [];
+  $('vote-err').textContent = '';
+  $('vote-title').textContent = m.tie ? '🗳️ Tie! Vote again' : '🗳️ Vote out the impostor';
+  $('vote-sub').textContent = 'Who do you suspect? One vote each.';
+  const grid = $('vote-grid');
+  grid.innerHTML = '';
+  (m.candidates || players).forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'vote-btn';
+    b.textContent = c.id === myId ? `${c.name} (you)` : c.name;
+    b.dataset.id = c.id;
+    if (c.id === myId) { b.disabled = true; b.title = "You can't vote for yourself"; }
+    b.onclick = () => {
+      if (myVote) return;
+      myVote = c.id;
+      [...grid.children].forEach(x => x.classList.toggle('picked', x === b));
+      send({ type:'vote', target: c.id });
+    };
+    grid.appendChild(b);
+  });
+  updateVoteProgress(m);
+}
+function updateVoteProgress(m){
+  $('vote-progress').textContent = `${m.votedCount}/${m.total} votes cast`;
+  if (myVote && m.votedCount > 0) $('vote-sub').textContent = 'Waiting for others to vote…';
+}
+
+/* ---------- result ---------- */
+function renderResult(m){
+  show('s-result');
+  const banner = $('result-banner');
+  const multi = m.imposterNames.length > 1;
+  if (m.caught) {
+    banner.className = 'banner win';
+    banner.innerHTML = `<h2>Caught! 🎉</h2><p>${m.imposterNames.map(escapeHtml).join(' & ')} ${multi?'were':'was'} the ${multi?'Impostors':'Impostor'}.</p>`;
+  } else {
+    banner.className = 'banner lose';
+    banner.innerHTML = `<h2>${escapeHtml(m.accusedName)} was innocent! 😈</h2><p>${m.imposterNames.map(escapeHtml).join(' & ')} ${multi?'slipped':'slipped'} away unseen.</p>`;
+  }
+  $('reveal-list').innerHTML = m.reveals.map(r => `
+    <div class="reveal-item ${r.isImposter?'imp':''}">
+      <span class="who">${escapeHtml(r.name)}${r.isImposter?'<span class="tag">IMP</span>':''}</span>
+      <span class="word">${escapeHtml(r.word)}${r.clue ? ` · “${escapeHtml(r.clue)}”` : ''}</span>
+    </div>`).join('');
+  const isHost = lobbyData && lobbyData.hostId === myId;
+  $('btn-rematch').style.display = isHost ? 'block' : 'none';
+  $('btn-back').style.display = isHost ? 'block' : 'none';
+  $('result-hint').textContent = isHost ? '' : 'Waiting for the host to choose…';
+}
+$('btn-rematch').onclick = () => send({ type:'rematch' });
+$('btn-back').onclick = () => send({ type:'backLobby' });
+
+function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- boot ---------- */
+// myId: server echoes id via lobby players matching this socket — server must send myId.
+// Patch: server sends lobby with myId (we include it there).
+connect();
+syncSettingsUI();
+</script>
+</body>
+</html>
