@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Imposter — Pass &amp; Play Party Game</title>
-<meta name="description" content="Everyone gets the same secret word except one impostor. Give one-word clues, discuss, and vote out the impostor. Free pass-and-play party game.">
+<meta name="description" content="Everyone gets the same secret word except one impostor. Discuss, bluff, and vote out the impostor. Free pass-and-play party game.">
 <style>
   :root {
     --bg1: #0f0c29;
@@ -187,35 +187,9 @@
   .tap-hint { color: var(--muted); font-size: 1rem; }
   .tap-hint .big { display: block; font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
 
-  /* clues */
+  /* discuss / vote */
   .turn-banner { text-align: center; font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
   .turn-sub { text-align: center; color: var(--muted); font-size: .9rem; margin-bottom: 16px; }
-  .clue-input {
-    width: 100%;
-    background: rgba(0,0,0,.3);
-    border: 1px solid var(--card-brd);
-    border-radius: 14px;
-    padding: 15px;
-    color: var(--text);
-    font-size: 1.15rem;
-    text-align: center;
-    font-family: inherit;
-    outline: none;
-    margin-bottom: 12px;
-    letter-spacing: 2px;
-  }
-  .clue-input:focus { border-color: var(--accent); }
-  .clue-list { display: flex; flex-direction: column; gap: 8px; }
-  .clue-item {
-    display: flex; justify-content: space-between;
-    background: rgba(0,0,0,.22);
-    border: 1px solid var(--card-brd);
-    border-radius: 12px;
-    padding: 11px 15px;
-    animation: fadeUp .3s ease both;
-  }
-  .clue-item b { color: var(--accent); }
-  .clue-item span { font-size: 1.1rem; font-weight: 600; }
 
   /* vote */
   .vote-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
@@ -279,10 +253,10 @@
   <!-- ============ SETUP ============ -->
   <section class="screen active" id="s-setup">
     <h1 class="logo">Imposter</h1>
-    <p class="tagline">Same word for everyone… except one impostor. Give one-word clues, find the fake.</p>
+    <p class="tagline">Same word for everyone… except one impostor. Talk it out, find the fake.</p>
 
     <div class="card">
-      <h2>Players <span id="p-count" style="float:right;color:var(--muted)">3</span></h2>
+      <h2>Players <span id="p-count" style="float:right;color:var(--muted)">0</span></h2>
       <div id="players"></div>
       <button class="btn btn-ghost btn-sm" id="add-player">+ Add player</button>
     </div>
@@ -290,6 +264,7 @@
     <div class="card">
       <h2>Topic Pack</h2>
       <div class="chip-row" id="topics"></div>
+      <div class="hint" style="margin-top:12px">🎲 Random picks a fresh pack every game.</div>
     </div>
 
     <div class="card">
@@ -298,7 +273,7 @@
         <button class="chip on" data-mode="topic">Knows topic only</button>
         <button class="chip" data-mode="decoy">Gets a decoy word</button>
       </div>
-      <div class="hint" style="margin-top:14px">Decoy mode is harder — the impostor gets a different word from the same pack and must fake the clues.</div>
+      <div class="hint" style="margin-top:14px">Decoy mode is harder — the impostor gets a different word from the same pack and must bluff it.</div>
     </div>
 
     <div class="card">
@@ -323,22 +298,12 @@
     <button class="btn btn-ghost" id="reveal-next">Next player →</button>
   </section>
 
-  <!-- ============ CLUES ============ -->
-  <section class="screen" id="s-clues">
-    <div class="card">
-      <div class="turn-banner" id="clue-turn"></div>
-      <div class="turn-sub">Say ONE word that describes your card. No repeats!</div>
-      <div id="clue-mine">
-        <input class="clue-input" id="clue-input" maxlength="18" placeholder="your word…" autocomplete="off">
-        <button class="btn btn-primary" id="clue-add">Give Clue</button>
-        <button class="btn btn-ghost" id="clue-skip">Pass (give no word)</button>
-      </div>
-      <div class="err" id="clue-err"></div>
-      <button class="btn btn-ghost" id="skip-all">Skip clue round → vote</button>
-    </div>
-    <div class="card">
-      <h2>Clues</h2>
-      <div class="clue-list" id="clue-list"><div class="hint">No clues yet.</div></div>
+  <!-- ============ DISCUSS ============ -->
+  <section class="screen" id="s-discuss">
+    <div class="card" style="text-align:center;padding:34px 20px">
+      <div class="turn-banner">🗣️ Discussion time</div>
+      <div class="turn-sub" style="margin-top:8px">Talk it out however you like — accuse, defend, bluff.<br>When your group is ready, vote.</div>
+      <button class="btn btn-primary" id="to-vote">Everyone ready → Vote</button>
     </div>
   </section>
 
@@ -375,22 +340,23 @@
 
 <script>
 const TOPICS = {
-  '🎬 Movies': ['Titanic','Avatar','Joker','Frozen','Interstellar','Gladiator','Matrix','Inception','Shrek','Alien','Rocky','Ghostbusters','Jurassic','Cars','Ratatouille','Coco','Up','Brave','Moana','Mulan','Aladdin','Halloween','Saw','It','Shining','Bambi','Dumbo','Zootopia','Frozen2','Pinocchio'],
-  '🍔 Food': ['Pizza','Sushi','Burger','Tacos','Pasta','Steak','Salad','Cookie','Donut','Pancake','Waffle','Ramen','Curry','Cheese','Bacon','Soup','Fries','Brownie','Muffin','Bagel','Pretzel','Cereal','Yogurt','Smoothie','Candy','Popcorn','Churro','Lasagna','Taco','Burrito'],
-  '🐾 Animals': ['Lion','Penguin','Koala','Shark','Tiger','Elephant','Giraffe','Monkey','Owl','Wolf','Bear','Fox','Rabbit','Horse','Zebra','Crocodile','Dolphin','Eagle','Frog','Goose','Llama','Otter','Panda','Sloth','Snake','Squirrel','Whale','Camel','Donkey','Flamingo'],
-  '🌍 Countries': ['Japan','Brazil','France','Egypt','Canada','Italy','Kenya','Norway','Greece','Thailand','Peru','Mexico','Spain','India','Turkey','Morocco','Iceland','Chile','Sweden','Vietnam','Portugal','Poland','Jordan','Nepal','Cuba','Fiji','Bhutan','Malta','Oman','Ireland'],
-  '⚽ Sports': ['Soccer','Tennis','Boxing','Golf','Cricket','Hockey','Karate','Surfing','Rowing','Archery','Bowling','Fencing','Rugby','Volleyball','Baseball','Basketball','Skating','Cycling','Marathon','Gymnastics','Wrestling','Judo','Kayak','Skiing','Sailing','Darts','Snooker','Handball','Badminton','Fishing'],
-  '🚀 Space': ['Mars','Comet','Rocket','Galaxy','Astronaut','Saturn','Nebula','Eclipse','Gravity','Orbit','Telescope','Meteor','Venus','Jupiter','Asteroid','Cosmos','Pulsar','Quasar','Lunar','Solar','Photon','Pluto','Europa','Titan','Voyager','Alien','Star','Black Hole','Sun','Moon'],
-  '💼 Jobs': ['Doctor','Pilot','Chef','Teacher','Nurse','Lawyer','Firefighter','Dentist','Farmer','Actor','Singer','Dancer','Engineer','Plumber','Carpenter','Journalist','Librarian','Barista','Photographer','Mechanic','Postman','Judge','Police','Waiter','Baker','Butler','Janitor','Coach','Artist','Vet'],
-  '🏰 Fantasy': ['Dragon','Wizard','Knight','Princess','Castle','Phoenix','Unicorn','Goblin','Mermaid','Demon','Angel','Witch','Sword','Potion','Golem','Giant','Elf','Dwarf','Griffin','Basilisk','Titan','Oracle','Lich','Sprite','Druid','Paladin','Rogue','Bard','Fairy','Kraken'],
-  '🎄 Holidays': ['Santa','Gift','Reindeer','Snowman','Sleigh','Stocking','Wreath','Candles','Feast','Fireworks','Pumpkin','Easter','Bunny','Valentine','Parade','Confetti','Lantern','Mistletoe','Chimney','Holiday','Calendar','Cheer','Socks','Tree','Star','Bell','Candy','Elf','Snow','Lights'],
-  '🎵 Music': ['Guitar','Piano','Drums','Violin','Trumpet','Concert','Festival','Karaoke','Record','Headphones','Speaker','Melody','Chorus','Symphony','Ballad','Jazz','Opera','Banjo','Harmonica','Ukulele','Flute','Cello','Bass','Microphone','DJ','Vinyl','Tune','Rhythm','Tempo','Drum'],
-  '💻 Tech': ['Laptop','Mouse','Screen','Keyboard','Router','Cloud','Robot','Battery','Charger','Camera','Printer','Tablet','Drone','Wifi','Server','App','Software','Virus','Monitor','Chip','Cable','Browser','Console','Socket','Projector','Scanner','Antenna','Satellite','Phone','Pixel'],
-  '🏕️ Nature': ['Mountain','River','Ocean','Forest','Desert','Volcano','Waterfall','Canyon','Glacier','Island','Jungle','Valley','Meadow','Swamp','Cliff','Lake','Cave','Storm','Rainbow','Sunset','Lightning','Breeze','Pebble','Cactus','Tornado','Aurora','Tide','Dune','Reef','Sprout']
+  '🎬 Movies': ['Rashomon','Vertigo','Mulholland Drive','Persona','Stalker','Tokyo Story','Bicycle Thieves','Cléo','Jules','Sátántangó','Céline','Koyaanisqatsi','Samsara','Baraka','Metropolis','Nosferatu','Bergman','Tarkovsky','Kubrick','Antichrist','Irréversible','Caché','Audition','Oldboy','Synechdoche','Under the Skin','mother!','Lamb','Titane','Hagazussa'],
+  '🍔 Food': ['Natto','Kimchi','Mole','Rouille','Ganache','Béarnaise','Rémoulade','Fondue','Goulash','Kimchee','Pierogi','Taramasalata','Chawanmushi','Fufu','Injera','Banh Mi','Rendang','Laksa','Borscht','Gazpacho','Ajvar','Pico','Zhug','Chimichurri','Salsa','Harissa','Toum','Dukkah','Zaatar','Miso'],
+  '🐾 Animals': ['Aye-aye','Numbat','Quokka','Binturong','Coati','Muskox','Saiga','Markhor','Dugong','Tapir','Cassowary','Lyrebird','Fossa','Serval','Genet','Kinkajou','Agouti','Cuscus','Pademelon','Bilby','Quoll','Potoroo','Wombat','Echidna','Platypus','Okapi','Pangolin','Axolotl','Jerboa','Narwhal'],
+  '🌍 Countries': ['Tuvalu','Nauru','Palau','Kiribati','Comoros','São Tomé','Bhutan','Lesotho','Eswatini','Brunei','Timor','Guyana','Suriname','Belize','Djibouti','Gambia','Togo','Benin','Malawi','Zambia','Zimbabwe','Mozambique','Angola','Namibia','Botswana','Uzbekistan','Kyrgyzstan','Tajikistan','Turkmenistan','Moldova'],
+  '⚽ Sports': ['Sepak takraw','Korfball','Pelota','Caber tossing','Bandy','Boules','Kabaddi','Kushti','Hurling','Camogie','Kronborg','Shinty','Gaelic','Roller derby','Quidditch','Kendo','Jousting','Fencing','Pentathlon','Biathlon','Curling','Skeleton','Luge','Bobsled','Snooker','Polo','Water polo','Handball','Fistball','Tejo'],
+  '🚀 Space': ['Pulsar','Quasar','Nebula','Wormhole','Redshift','Parallax','Prominence','Filament','Baryon','Photon','Neutrino','Fermion','Lepton','Quark','Hadron','Meson','Boson','Singularity','Accretion','Perihelion','Aphelion','Zenith','Nadir','Ecliptic','Umbra','Penumbra','Aurora','Corona','Solar','Lunar'],
+  '💼 Jobs': ['Sommelier','Actuary','Cartographer','Ethnographer','Seismographer','Coroner','Embalmer','Luthier','Bellfounder','Typesetter','Wheelwright','Cooper','Chandler','Fletcher','Lanternist','Blacksmith','Tanner','Weaver','Thatcher','Stonemason','Glassblower','Powdermonkey','Limner','Gravedigger','Beefeater','Glassburger','Dowser','Garderobe','Reeve','Bailiff'],
+  '🏰 Fantasy': ['Basilisk','Manticore','Chimera','Cockatrice','Wyvern','Griffin','Kraken','Selkie','Kelpie','Banshee','Dullahan','Will-o-wisp','Changeling','Doppleganger','Homunculus','Golem','Djinn','Ifrit','Roc','Simurgh','Garuda','Lamia','Siren','Harpy','Gorgon','Furies','Cerberus','Hydra','Minotaur','Charybdis'],
+  '🎄 Holidays': ['Epiphany','Solstice','Equinox','Hanukkah','Kwanzaa','Diwali','Lantern','Advent','Yule','Wassail','Christingle','Piñata','Koliada','Dedmoroz','Sinterklaas','Krampus','Befana','Olentzero','Kekri','Kupala','Nowruz','Obon','Qingming','Chuseok','Songkran','Thingtide','Modranicht','Mopane','Julbord','Fasching'],
+  '🎵 Music': ['Ostinato','Fugue','Cantata','Nocturne','Scherzo','Récitatif','Sforzando','Glissando','Pizzicato','Vibrato','Timpani','Harpsichord','Continuo','Tacet','Da capo','Cadenza','Largo','Allegro','Presto','Adagio','Marcato','Staccato','Legato','Tremolo','Con sordino','Obbligato','Divertimento','Serenade','Rhapsody','Toccata'],
+  '💻 Tech': ['Kubernetes','Compiler','Firewall','Daemon','Kernel','Latency','Bandwidth','Throughput','Caching','Sharding','Replica','Payload','Checksum','Metadata','Regex','Boolean','Pointer','Heap','Stack','Buffer','Thread','Socket','Endpoint','Webhook','Container','Ingress','Pipeline','Daemonset','Middleware','Sandbox'],
+  '🏕️ Nature': ['Fjord','Mesa','Butte','Cirque','Arete','Col','U valley','Hoodoo','Moulin','Crevasse','Nunatak','Kettle','Esker','Drumlin','Dune','Atoll','Barrier','Spit','Tombolo','Estuary','Delta','Oxbow','Meander','Riffle','Plunge','Cascade','Rapids','Whitewater','Falls','Springs']
 };
 
+const RANDOM = '🎲 Random';
 const $ = id => document.getElementById(id);
-const screens = ['s-setup','s-reveal','s-clues','s-vote','s-result'];
+const screens = ['s-setup','s-reveal','s-discuss','s-vote','s-result'];
 function show(name){
   screens.forEach(s => $(s).classList.toggle('active', s === name));
   window.scrollTo({top:0, behavior:'smooth'});
@@ -401,14 +367,12 @@ const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','
 
 /* ---------- state ---------- */
 let state = {
-  names: ['Alex','Sam','Jordan'],
-  topic: Object.keys(TOPICS)[Math.floor(Math.random()*Object.keys(TOPICS).length)],
+  names: ['', '', ''],
+  topic: RANDOM,
   mode: 'topic',
   impCount: 1,
   players: [],
   revealIdx: 0,
-  clueIdx: 0,
-  clues: [],
   voteIdx: 0,
   votes: {}
 };
@@ -420,7 +384,7 @@ function renderPlayers(){
   state.names.forEach((n,i)=>{
     const row = document.createElement('div');
     row.className = 'player-row';
-    row.innerHTML = `<input value="${escapeHtml(n)}" maxlength="14" data-i="${i}">`;
+    row.innerHTML = `<input value="${escapeHtml(n)}" maxlength="14" data-i="${i}" placeholder="Player ${i+1}" autocomplete="off">`;
     if(state.names.length > 3){
       const del = document.createElement('button');
       del.className = 'del'; del.textContent = '✕';
@@ -432,18 +396,21 @@ function renderPlayers(){
   box.querySelectorAll('input').forEach(inp=>{
     inp.oninput = () => { state.names[+inp.dataset.i] = inp.value; };
   });
-  $('p-count').textContent = state.names.length;
+  $('p-count').textContent = state.names.filter(n=>n.trim()).length;
 }
+$('players').addEventListener('input', () => {
+  $('p-count').textContent = state.names.filter(n=>n.trim()).length;
+});
 $('add-player').onclick = () => {
   if(state.names.length >= 12) return;
-  state.names.push('Player ' + (state.names.length+1));
+  state.names.push('');
   renderPlayers();
 };
 
 function renderTopics(){
   const box = $('topics');
   box.innerHTML = '';
-  Object.keys(TOPICS).forEach(t=>{
+  [RANDOM, ...Object.keys(TOPICS)].forEach(t=>{
     const b = document.createElement('button');
     b.className = 'chip' + (t === state.topic ? ' on' : '');
     b.textContent = t;
@@ -471,14 +438,14 @@ $('start').onclick = () => {
   if(state.impCount >= names.length){ err.textContent = 'Too many impostors for this group.'; return; }
   err.textContent = '';
 
-  const words = shuffle(TOPICS[state.topic]);
+  const topic = state.topic === RANDOM ? rand(Object.keys(TOPICS)) : state.topic;
+  const words = shuffle(TOPICS[topic]);
   const crewWord = words[0];
   const impIdx = shuffle(names.map((_,i)=>i)).slice(0, state.impCount);
   state.players = names.map((name,i)=>({
     name,
     isImp: impIdx.includes(i),
-    word: null,
-    clue: ''
+    word: null
   }));
   state.players.forEach(p=>{ if(!p.isImp) p.word = crewWord; });
   if(state.mode === 'decoy'){
@@ -486,9 +453,8 @@ $('start').onclick = () => {
     state.players.forEach(p=>{ if(p.isImp) p.word = decoys.shift() || crewWord; });
   }
 
+  state.activeTopic = topic;
   state.revealIdx = 0;
-  state.clueIdx = 0;
-  state.clues = [];
   state.voteIdx = 0;
   state.votes = {};
   cardOpen = false;
@@ -513,11 +479,11 @@ function openCard(){
   const card = $('pass-card');
   card.innerHTML = p.isImp
     ? `<div class="secret-word imposter">IMPOSTOR</div>
-       ${state.mode === 'topic' ? `<div class="topic-badge">Topic: ${escapeHtml(state.topic)}</div>` : `<div class="topic-badge">Your word: ${escapeHtml(p.word)}</div>`}
+       ${state.mode === 'topic' ? `<div class="topic-badge">Topic: ${escapeHtml(state.activeTopic)}</div>` : `<div class="topic-badge">Your word: ${escapeHtml(p.word)}</div>`}
        <div class="tap-hint" style="margin-top:14px">Blend in. Don't get caught.</div>
        <div class="tap-hint" style="margin-top:18px;opacity:.7">Tap to hide</div>`
     : `<div class="secret-word">${escapeHtml(p.word)}</div>
-       <div class="topic-badge">Topic: ${escapeHtml(state.topic)}</div>
+       <div class="topic-badge">Topic: ${escapeHtml(state.activeTopic)}</div>
        <div class="tap-hint" style="margin-top:14px">Keep it secret!</div>
        <div class="tap-hint" style="margin-top:18px;opacity:.7">Tap to hide</div>`;
   card.onclick = () => { cardOpen = false; renderReveal(); $('reveal-next').style.display = 'block'; };
@@ -527,52 +493,12 @@ $('reveal-next').onclick = () => {
     state.revealIdx++;
     renderReveal();
   } else {
-    state.clueIdx = 0;
-    renderClueTurn();
-    paintClues();
-    show('s-clues');
+    show('s-discuss');
   }
 };
-
-/* ---------- clues ---------- */
-function renderClueTurn(){
-  const done = state.clueIdx >= state.players.length;
-  if(done){
-    $('clue-turn').textContent = 'Discussion time! 🗣️';
-    document.querySelector('#s-clues .turn-sub').textContent = 'Talk it out, then vote when your group is ready.';
-    $('clue-mine').style.display = 'none';
-    $('skip-all').textContent = 'Everyone ready → Vote';
-    return;
-  }
-  const p = state.players[state.clueIdx];
-  $('clue-turn').textContent = `🗣️ Pass to ${p.name} — their clue`;
-  document.querySelector('#s-clues .turn-sub').textContent = 'Say ONE word that describes your card. No repeats!';
-  $('clue-mine').style.display = 'block';
-  $('skip-all').textContent = 'Skip clue round → vote';
-  $('clue-input').value = '';
-  $('clue-err').textContent = '';
-}
-function paintClues(){
-  const box = $('clue-list');
-  if(!state.clues.length){ box.innerHTML = '<div class="hint">No clues yet.</div>'; return; }
-  box.innerHTML = state.clues.map((c,i)=>
-    `<div class="clue-item"><b>${i+1}. ${escapeHtml(c.name)}</b><span>${escapeHtml(c.word)}</span></div>`).join('');
-}
-function nextClue(){ state.clueIdx++; renderClueTurn(); }
-$('clue-add').onclick = () => {
-  const v = $('clue-input').value.trim();
-  if(!v){ $('clue-err').textContent = 'Type a word first.'; return; }
-  if(state.clues.some(c=>c.word.toLowerCase() === v.toLowerCase())){ $('clue-err').textContent = 'That word was already used!'; return; }
-  const p = state.players[state.clueIdx];
-  p.clue = v;
-  state.clues.push({ name: p.name, word: v });
-  paintClues();
-  nextClue();
-};
-$('clue-skip').onclick = nextClue;
-$('skip-all').onclick = startVote;
 
 /* ---------- vote (private, turn-based) ---------- */
+$('to-vote').onclick = startVote;
 function startVote(){
   state.voteIdx = 0;
   state.votes = {};
@@ -634,10 +560,9 @@ $('reveal-result').onclick = () => {
     const wordText = p.isImp
       ? (state.mode === 'decoy' ? p.word : 'IMPOSTOR')
       : p.word;
-    const clue = p.clue ? ` · clue: “${escapeHtml(p.clue)}”` : '';
     return `<div class="reveal-item ${p.isImp?'imp':''}">
       <span class="who">${escapeHtml(p.name)}${p.isImp?'<span class="tag">IMP</span>':''}</span>
-      <span class="word">${escapeHtml(wordText)}${clue}</span>
+      <span class="word">${escapeHtml(wordText)}</span>
     </div>`;
   }).join('');
   show('s-result');
