@@ -269,7 +269,23 @@
     transition: .15s;
   }
   .vote-btn:hover { border-color: var(--accent2); background: rgba(244,114,182,.12); }
+  .vote-btn:disabled { opacity: .3; cursor: not-allowed; }
   .vote-btn.picked { background: linear-gradient(90deg, var(--accent2), var(--bad)); border-color: transparent; color: #2b0a1a; }
+  .vote-feed { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .feed-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--card-brd);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: .92rem;
+    font-weight: 600;
+    animation: fadeUp .3s ease both;
+  }
+  .feed-row .voter { color: var(--muted); }
+  .feed-row .arrow { color: var(--accent2); margin: 0 10px; font-weight: 800; }
+  .feed-row .suspect { color: var(--text); }
+  .feed-empty { color: var(--muted); font-size: .88rem; text-align: center; padding: 6px 0 2px; }
   .tally { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
   .tally-row {
     display: flex; justify-content: space-between;
@@ -375,14 +391,15 @@
     <div class="progress" id="vote-progress"></div>
     <div class="card">
       <div class="turn-banner" id="vote-turn"></div>
-      <div class="turn-sub" id="vote-sub">Who do you suspect? Your pick stays secret until everyone votes.</div>
+      <div class="turn-sub" id="vote-sub"></div>
       <div class="vote-grid" id="vote-grid"></div>
       <div class="err" id="vote-err"></div>
     </div>
-    <div class="card" id="vote-tally-card" style="display:none">
-      <h2>Votes</h2>
+    <div class="card" id="vote-live-card">
+      <h2>Live votes</h2>
+      <div class="vote-feed" id="vote-feed"></div>
       <div class="tally" id="vote-tally"></div>
-      <button class="btn btn-primary" id="reveal-result" style="margin-top:16px">Reveal the Impostor</button>
+      <button class="btn btn-primary" id="reveal-result" style="display:none;margin-top:16px">Reveal the Impostor</button>
     </div>
   </section>
 
@@ -437,7 +454,7 @@ let state = {
   players: [],
   revealIdx: 0,
   voteIdx: 0,
-  votes: {}
+  voteLog: []
 };
 
 /* ---------- setup ---------- */
@@ -519,7 +536,6 @@ $('start').onclick = () => {
   state.activeTopic = topic;
   state.revealIdx = 0;
   state.voteIdx = 0;
-  state.votes = {};
   cardOpen = false;
   renderReveal();
   show('s-reveal');
@@ -597,20 +613,20 @@ $('reveal-next').onclick = () => {
   }
 };
 
-/* ---------- vote (private, turn-based) ---------- */
+/* ---------- vote (live, public board) ---------- */
 $('to-vote').onclick = startVote;
 function startVote(){
   state.voteIdx = 0;
-  state.votes = {};
-  $('vote-tally-card').style.display = 'none';
+  state.voteLog = [];
+  $('reveal-result').style.display = 'none';
   renderVoteTurn();
   show('s-vote');
 }
 function renderVoteTurn(){
   const p = state.players[state.voteIdx];
-  $('vote-progress').textContent = `SECRET BALLOT ${state.voteIdx+1} / ${state.players.length}`;
-  $('vote-turn').textContent = `🗳️ Pass to ${p.name}`;
-  $('vote-sub').textContent = 'Who do you suspect? Your pick stays secret until everyone votes.';
+  $('vote-progress').textContent = `LIVE VOTE ${state.voteIdx+1} / ${state.players.length}`;
+  $('vote-turn').textContent = `🗳️ Now voting: ${escapeHtml(p.name)}`;
+  $('vote-sub').textContent = 'Everyone watches — tap the suspect you want to vote out.';
   $('vote-err').textContent = '';
   const grid = $('vote-grid');
   grid.innerHTML = '';
@@ -620,26 +636,40 @@ function renderVoteTurn(){
     b.textContent = (i === state.voteIdx) ? `${cand.name} (you)` : cand.name;
     if(i === state.voteIdx){ b.disabled = true; b.title = "You can't vote for yourself"; }
     b.onclick = () => {
-      state.votes[p.name] = cand.name;
+      state.voteLog.push({ voter: p.name, suspect: cand.name });
       state.voteIdx++;
+      renderLiveVotes();
       if(state.voteIdx < state.players.length) renderVoteTurn();
-      else showVoteTally();
+      else finishVote();
     };
     grid.appendChild(b);
   });
+  renderLiveVotes();
 }
-function showVoteTally(){
+function renderLiveVotes(){
+  const feed = $('vote-feed');
+  if(!state.voteLog.length){
+    feed.innerHTML = '<div class="feed-empty">No votes yet — be the first!</div>';
+  } else {
+    feed.innerHTML = state.voteLog.slice().reverse().map(v =>
+      `<div class="feed-row"><span><span class="voter">${escapeHtml(v.voter)}</span><span class="arrow">→</span><span class="suspect">${escapeHtml(v.suspect)}</span></span><em>✓</em></div>`).join('');
+  }
+  const counts = {};
+  state.voteLog.forEach(v => counts[v.suspect] = (counts[v.suspect]||0)+1);
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  $('vote-tally').innerHTML = sorted.map(([name,n]) =>
+    `<div class="tally-row"><span>${escapeHtml(name)}</span><em>${n} vote${n>1?'s':''}</em></div>`).join('');
+}
+function finishVote(){
+  const counts = {};
+  state.voteLog.forEach(v => counts[v.suspect] = (counts[v.suspect]||0)+1);
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  state.topSuspect = sorted[0][0];
   $('vote-progress').textContent = 'VOTES ARE IN';
   $('vote-turn').textContent = '🗳️ The votes';
   $('vote-sub').textContent = 'Highest count is suspected — reveal their card!';
   $('vote-grid').innerHTML = '';
-  const counts = {};
-  Object.values(state.votes).forEach(t => counts[t] = (counts[t]||0)+1);
-  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-  $('vote-tally').innerHTML = sorted.map(([name,n])=>
-    `<div class="tally-row"><span>${name}</span><em>${n} vote${n>1?'s':''}</em></div>`).join('');
-  $('vote-tally-card').style.display = 'block';
-  state.topSuspect = sorted[0][0];
+  $('reveal-result').style.display = 'block';
 }
 
 /* ---------- result ---------- */
